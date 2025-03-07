@@ -78,7 +78,6 @@ func main() {
 }
 
 func process(filepath string, query Query) {
-	//
 	reader, file := t.Reader(filepath)
 	defer file.Close()
 
