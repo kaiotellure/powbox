@@ -2,23 +2,36 @@ package main
 
 import (
 	t "banklistreader/internal/tools"
-
-	"fmt"
+	"errors"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/fatih/color"
-	"github.com/manifoldco/promptui"
 )
 
 func step_ask_input_files() []string {
-	fmt.Printf(
-		"%s Arraste o arquivo %s ou uma pasta com os logins para esta janela!\n",
-		color.YellowString("→"),
-		color.MagentaString(".txt"),
-	)
+	var input string
+
+	err := huh.NewInput().
+		Title("Onde esta o arquivo ou pasta com os logins?").
+		Placeholder("Dica: Arraste o arquivo ou a pasta para esta janela!").
+		Validate(func(s string) error {
+			if !t.Exists(strings.Trim(s, "\"")) {
+				return errors.New("arquivo ou pasta não existe")
+			}
+			return nil
+		}).
+		Prompt("→ ").
+		Value(&input).
+		Run()
+
+	if err != nil {
+		color.Red("● Um erro ocorreu, por-favor, tente novamente!")
+		return step_ask_input_files()
+	}
 
 	// On Windows when files are dragged to the terminal window and they contain space in their name, they come as an absolute path surrounded by double quotes. eg: "C://myfiles/folder/file.txt"
-	input := strings.Trim(t.Ask(), "\"")
+	input = strings.Trim(input, "\"")
 
 	if !t.Exists(input) {
 		color.Red("● O arquivo/pasta (%s) não existe!", input)
@@ -41,23 +54,24 @@ func step_ask_input_files() []string {
 }
 
 func step_ask_filter_key() string {
-	fmt.Printf(
-		"%s Qual termo quer achar? exemplos: %s, %s ou %s\n",
-		color.YellowString("→"),
-		color.MagentaString("max"),
-		color.RedString("netflix"),
-		color.BlueString("paramount"),
-	)
+	var input string
 
-	input := t.Ask()
+	err := huh.NewInput().
+		Title("Qual o termo da pesquisa?").
+		Description("Nota: prefira letras minúscula").
+		Placeholder("max.com, netflix.com, adobe.com e etc...").
+		Validate(func(s string) error {
+			if len(s) == 0 {
+				return errors.New("não pode ser vazio")
+			}
+			return nil
+		}).
+		Prompt("→ ").
+		Value(&input).
+		Run()
 
-	if input == EMPTY_STRING {
-		color.Red("● O termo não pode ser vazio!")
-		return step_ask_filter_key()
-	}
-
-	if len(input) < 3 {
-		color.Red("● O termo não pode ser tão curto!")
+	if err != nil {
+		color.Red("● Um erro ocorreu, por-favor, tente novamente!")
 		return step_ask_filter_key()
 	}
 
@@ -65,22 +79,23 @@ func step_ask_filter_key() string {
 }
 
 var FORMATS = map[string]string{
-	"site:usuário:senha": "%s:%s:%s",
-	"usuário:senha":      "%[2]s:%[3]s",
+	"<Site>:<Usuário>:<Senha>": "%s:%s:%s",
+	"<Usuário>:<Senha>":        "%[2]s:%[3]s",
 }
 
 func step_ask_out_format() string {
-	format_select := promptui.Select{
-		Label:    "Como os logins encontrados devem ser guardados?",
-		Items:    t.Keys(FORMATS),
-		HideHelp: true,
-	}
+	var input string
 
-	_, format, err := format_select.Run()
+	err := huh.NewSelect[string]().
+		Options(huh.NewOptions(t.Keys(FORMATS)...)...).
+		Title("Com qual formato o resultado deve ser salvo?").
+		Value(&input).
+		Run()
+
 	if err != nil {
-		color.Red("● Error ao ler formato: %v", err)
+		color.Red("● Um erro ocorreu, por-favor, tente novamente!")
 		return step_ask_out_format()
 	}
 
-	return FORMATS[format]
+	return FORMATS[input]
 }

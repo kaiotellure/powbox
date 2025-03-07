@@ -1,0 +1,106 @@
+package main
+
+import (
+	"banklistreader/internal/proxy"
+	"banklistreader/internal/tools"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/fatih/color"
+)
+
+func try(url, prox string) (err error) {
+	fmt.Println("trying", url, prox)
+	//
+	client, err := proxy.ProxyClient(prox)
+	if err != nil {
+		return
+	}
+
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
+
+	request.Header = http.Header{
+		"User-Agent":                []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0"},
+		"Accept":                    []string{"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+		"Accept-Language":           []string{"en-US,en;q=0.5"},
+		"Accept-Encoding":           []string{"gzip, deflate, br, zstd"},
+		"Connection":                []string{"keep-alive"},
+		"Upgrade-Insecure-Requests": []string{"1"},
+		"DNT":                       []string{"1"},
+		"Sec-GPC":                   []string{"1"},
+		"Priority":                  []string{"u=0, i"},
+		"Sec-Fetch-Dest":            []string{"document"},
+		"Sec-Fetch-Mode":            []string{"navigate"},
+		"Sec-Fetch-Site":            []string{"none"},
+		"Sec-Fetch-User":            []string{"?1"},
+		"Referer":                   []string{url},
+		"TE":                        []string{"trailers"},
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	d := tools.Appendable("debug.html")
+	io.Copy(d, response.Body)
+
+	anchors, err := gatherAnchors(response.Body)
+	if err != nil {
+		return
+	}
+
+	fmt.Println(len(anchors), "\n", anchors)
+	return
+}
+
+func gatherAnchors(reader io.Reader) (anchors []string, err error) {
+	doc, err := goquery.NewDocumentFromReader(reader)
+	if err != nil {
+		return
+	}
+
+	doc.Find("a[jsname='UWckNb']").Each(func(i int, s *goquery.Selection) {
+		if href, exist := s.Attr("href"); exist {
+			anchors = append(anchors, href)
+		}
+	})
+	return
+}
+
+func main() {
+	/* r, _ := tools.Reader("google.html")
+	gatherAnchors(r)
+	return */
+
+	proxies := proxy.FetchProxiesList()
+	color.Yellow("● %d proxies foram encontradas!", len(proxies))
+
+	dorks := step_ask_dork_file()
+	color.Yellow("● %d dorks foram encontradas!", len(dorks))
+
+	var dorkyIndex int
+	var proxyIndex int
+
+	for {
+		dork := strings.TrimSpace(dorks[dorkyIndex])
+		prox := strings.TrimSpace(proxies[proxyIndex])
+
+		url := "https://www.google.com/search?q=" + dork
+		err := try(url, prox)
+
+		if err != nil {
+			proxyIndex++
+			continue
+		}
+
+		dorkyIndex++
+	}
+}
