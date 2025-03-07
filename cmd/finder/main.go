@@ -1,7 +1,7 @@
 package main
 
 import (
-	t "banklistreader/internal/tools"
+	t "powbox/internal/tools"
 
 	"strings"
 	"errors"

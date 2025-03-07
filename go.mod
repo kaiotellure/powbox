@@ -1,4 +1,4 @@
-module banklistreader
+module powbox
 
 go 1.23
 
