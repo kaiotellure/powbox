@@ -3,15 +3,13 @@ package main
 import (
 	t "powbox/internal/tools"
 
-	"strings"
 	"errors"
-	"path"
-	"time"
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/fatih/color"
+	"path"
+	"strings"
+	"time"
 )
 
 const EMPTY_STRING = ""
@@ -33,47 +31,59 @@ func compare(q Query, l *Login) {
 	matches_count++
 
 	fmt.Printf(
-		"\r  %s há %s pesquisando por: (%s) txt°→(%s) encontrados→(%s/%s)",
-		color.YellowString(t.Spinner()),
-		color.YellowString(fmt.Sprintf("%ds", time.Now().Unix()-q.StartSecond)),
-		color.YellowString(q.FilterKey),
-		color.YellowString(fmt.Sprintf("%d", q.StepIndex)),
-		color.GreenString(fmt.Sprintf("%d", matches_count)),
-		color.YellowString(fmt.Sprintf("%d", total_count)),
+		"\r%s há %s pesquisando por: (%s) txt°→(%s) encontrados→(%s/%s)",
+		yellow(t.Spinner()),
+		purple(fmt.Sprintf("%ds", time.Now().Unix()-q.StartSecond)),
+		green(q.FilterKey),
+		purple(fmt.Sprintf("%d", q.StepIndex)),
+		purple(fmt.Sprintf("%d", matches_count)),
+		yellow(fmt.Sprintf("%d", total_count)),
 	)
 }
 
 func main() {
+	// The initial meta informations displayed on startup
+	s := fmt.Sprintf("Lofin %s 1.2\n", muted("●"))
+	s += muted("Ferramenta para filtrar e transformar combo lists")
+	fmt.Println(border(s))
+
+	// Ask user for the input files, file or a folder of files
 	input_files := step_ask_input_files()
 
-	// root directory of the input file
+	// Use the first's file directory as working dir
 	iwd := t.Dir(input_files[0])
 
 	var query Query
 	query.FilterKey = step_ask_filter_key()
 	query.OutFormat = step_ask_out_format()
 
+	// This will later be used to display the task's duration
 	query.StartSecond = time.Now().Unix()
 
-	// eg. resultados-2000-03-13.txt
+	// eg. results-2000-03-13.txt
 	outFilename := t.TimedFilename(query.FilterKey, ".txt")
 
+	// Concatenate path and ensure all anscenstor directories exist
 	absoluteOutpath := path.Join(iwd, "resultados", outFilename)
 	t.Ensure(absoluteOutpath)
 
-	// the appendable result output file
+	// The file filtered credentials will be appended to
 	query.OutFile = t.Appendable(absoluteOutpath)
 	defer query.OutFile.Close()
+
+	fmt.Print("\n")
 
 	for i, filepath := range input_files {
 		query.StepIndex = i + 1
 		process(filepath, query)
 	}
 
-	color.Green(
-		"\n\n● Concluído → %s %s",
-		color.CyanString(t.LINK_FORMAT, "file://"+absoluteOutpath, "("+outFilename+")"),
-		color.GreenString("√"),
+	fmt.Printf(
+		"\n\n%s %s %s %s\n",
+		green("●"),
+		purple("Concluído"),
+		(fmt.Sprintf(t.LINK_FORMAT, "file://"+absoluteOutpath, "("+outFilename+")")),
+		green("√"),
 	)
 }
 

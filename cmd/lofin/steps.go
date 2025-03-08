@@ -1,7 +1,11 @@
 package main
 
 import (
-	t "banklistreader/internal/tools"
+	t "powbox/internal/tools"
+
+	"fmt"
+	"strconv"
+
 	"errors"
 	"strings"
 
@@ -13,10 +17,10 @@ func step_ask_input_files() []string {
 	var input string
 
 	err := huh.NewInput().
-		Title("Onde esta o arquivo ou pasta com os logins?").
 		Placeholder("Dica: Arraste o arquivo ou a pasta para esta janela!").
+		Title("Onde está o arquivo ou pasta com os logins?").
 		Validate(func(s string) error {
-			if !t.Exists(strings.Trim(s, "\"")) {
+			if !t.Exists(strings.Trim(s, "\"'")) {
 				return errors.New("arquivo ou pasta não existe")
 			}
 			return nil
@@ -30,15 +34,11 @@ func step_ask_input_files() []string {
 		return step_ask_input_files()
 	}
 
-	// On Windows when files are dragged to the terminal window and they contain space in their name, they come as an absolute path surrounded by double quotes. eg: "C://myfiles/folder/file.txt"
-	input = strings.Trim(input, "\"")
-
-	if !t.Exists(input) {
-		color.Red("● O arquivo/pasta (%s) não existe!", input)
-		return step_ask_input_files()
-	}
+	// Remove any trailing quotes, (") Windows (') Linux
+	input = strings.Trim(input, "\"'")
 
 	if t.IsDir(input) {
+		// Gathers all .txt files in that directory, non-recursively
 		text_files := t.Files(input, ".txt")
 
 		if len(text_files) == 0 {
@@ -47,9 +47,14 @@ func step_ask_input_files() []string {
 		}
 
 		color.Yellow("● %d arquivos .txt foram encontrados na pasta!", len(text_files))
+
+		fmt.Printf("%s a pasta escolhida foi: %s(%s)\n", purple("●"), purple(input), pink(strconv.Itoa(len(text_files))))
 		return text_files
 	}
 
+	fmt.Printf("%s o arquivo escolhido foi: %s\n", purple("●"), purple(input))
+
+	// User provided a single input file
 	return []string{input}
 }
 
@@ -58,7 +63,7 @@ func step_ask_filter_key() string {
 
 	err := huh.NewInput().
 		Title("Qual o termo da pesquisa?").
-		Description("Nota: prefira letras minúscula").
+		Description(warn("NOTA") + " Letras maiúsculas e minúsculas não são iguais!").
 		Placeholder("max.com, netflix.com, adobe.com e etc...").
 		Validate(func(s string) error {
 			if len(s) == 0 {
@@ -75,20 +80,21 @@ func step_ask_filter_key() string {
 		return step_ask_filter_key()
 	}
 
+	fmt.Printf("%s o termo de pesquisa foi: %s\n", purple("●"), purple(input))
 	return input
 }
 
 var FORMATS = map[string]string{
-	"<Site>:<Usuário>:<Senha>": "%s:%s:%s",
-	"<Usuário>:<Senha>":        "%[2]s:%[3]s",
+	"<site>:<usuário>:<senha>": "%s:%s:%s",
+	"<usuário>:<senha>":        "%[2]s:%[3]s",
 }
 
 func step_ask_out_format() string {
 	var input string
 
 	err := huh.NewSelect[string]().
-		Options(huh.NewOptions(t.Keys(FORMATS)...)...).
 		Title("Com qual formato o resultado deve ser salvo?").
+		Options(huh.NewOptions(t.Keys(FORMATS)...)...).
 		Value(&input).
 		Run()
 
@@ -97,5 +103,6 @@ func step_ask_out_format() string {
 		return step_ask_out_format()
 	}
 
+	fmt.Printf("%s formato das credenciais: %s\n", purple("●"), purple(input))
 	return FORMATS[input]
 }
