@@ -1,16 +1,28 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
+type Metrics struct {
+	Total   int
+	Matches int
+
+	StartSecond int64
+}
+
 type Query struct {
+	Metrics     *Metrics
 	FilterKey   string
 	OutFormat   string
 	OutFile     *os.File
 	StepIndex   int
-	StartSecond int64
+	Progress    *tea.Program
+	Context     context.Context
 }
 
 type Login struct {
